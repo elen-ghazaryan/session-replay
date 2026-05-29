@@ -9,6 +9,7 @@ type StoredSession = {
 
 export type SessionMetadata = {
   sessionId: string;
+  appId: string;
   userAgent: string;
   screenWidth: number;
   screenHeight: number;
@@ -19,7 +20,7 @@ export type SessionMetadata = {
 export class Session {
   private cached: StoredSession | null = null;
 
-  constructor() {
+  constructor(private readonly appId: string) {
     window.addEventListener('storage', (e) => {
       if (e.key !== STORAGE_KEY) return;
       this.cached = null;
@@ -51,6 +52,7 @@ export class Session {
 
     return {
       sessionId: this.cached.id,
+      appId: this.appId,
       userAgent: navigator.userAgent,
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
