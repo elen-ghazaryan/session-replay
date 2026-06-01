@@ -1,5 +1,6 @@
 import type { Sender, TrackPayload } from '../core/Batcher';
 import { toCreateTrackRequest } from './mapper';
+import { HttpError } from './HttpError';
 
 export class HttpSender {
   constructor(private readonly endpoint: string) {}
@@ -11,11 +12,10 @@ export class HttpSender {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
-      keepalive: true,
     });
 
     if (!response.ok) {
-      throw new Error(`[tracker] backend ${response.status}`);
+      throw new HttpError(`[tracker] backend ${response.status}`, response.status);
     }
   };
 

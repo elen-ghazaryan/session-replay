@@ -1,7 +1,8 @@
 import { type eventWithTime } from 'rrweb';
 import type { Session, SessionMetadata } from './Session';
+import { isRetryable } from '../transport/HttpError';
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 30;
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_BUFFER_SIZE = 1000;
 const INITIAL_RETRY_MS = 1000;
@@ -26,9 +27,14 @@ export type BatcherOptions = {
 export class Batcher {
   private buffer: BufferedEvent[] = [];
   private timer: number | null = null;
-  private sending: boolean = false;
+  private inFlightSet: Set<BufferedEvent> = new Set();
   private failureMode: boolean = false;
   private retryDelay: number = INITIAL_RETRY_MS;
+
+  // Source of truth for both push and flush: while true, no other send runs.
+  private get sending(): boolean {
+    return this.inFlightSet.size > 0;
+  }
 
   constructor(
     private readonly session: Session,
@@ -65,23 +71,37 @@ export class Batcher {
     if (this.sending || this.buffer.length === 0) return;
 
     this.clearTimer();
-    this.sending = true;
 
     const inFlight = this.buffer.slice(0, BATCH_SIZE);
-    const payload = {
-      session: this.session.getMetadata(),
-      events: inFlight,
-    };
+    let payload: TrackPayload;
+    try {
+      payload = { session: this.session.getMetadata(), events: inFlight };
+    } catch (e) {
+      console.warn('[tracker] no active session, skipping flush', e);
+      return;
+    }
+    // Track the exact events this send owns. Removal (and the beacon path)
+    // key off identity, not position — so if the buffer is wiped and refilled
+    // mid-send (overflow), we can't delete or double-ship the wrong events.
+    const sent = new Set(inFlight);
+    this.inFlightSet = sent;
 
     try {
       await this.send(payload);
-      this.buffer.splice(0, inFlight.length); //remove on success
+      this.buffer = this.buffer.filter((e) => !sent.has(e)); // remove on success
+      this.inFlightSet = new Set();
       this.onSendSuccess();
     } catch (e) {
-      console.warn('[tracker] send failed, will retry', e);
-      this.onSendFailure();
-    } finally {
-      this.sending = false;
+      this.inFlightSet = new Set();
+      if (isRetryable(e)) {
+        console.warn('[tracker] send failed, will retry', e);
+        this.onSendFailure();
+      } else {
+        // 4xx: the payload is bad, retrying can't fix it. Drop the batch.
+        console.error(`[tracker] backend rejected batch, dropped ${sent.size} events`, e);
+        this.buffer = this.buffer.filter((ev) => !sent.has(ev));
+        this.onSendSuccess();
+      }
     }
   }
 
@@ -119,12 +139,25 @@ export class Batcher {
   }
 
   drainForBeacon(): TrackPayload | null {
-    if (this.buffer.length === 0) return null;
+    // Skip events the in-flight fetch already owns — keepalive will deliver
+    // them, so beaconing them too would double-ship. Keep them in the buffer
+    // so a cancelled unload can still resolve them normally.
+    const events = this.buffer.filter((e) => !this.inFlightSet.has(e));
+    if (events.length === 0) return null;
 
-    const events = this.buffer;
-    this.buffer = [];
+    let session: SessionMetadata;
+    try {
+      session = this.session.getMetadata();
+    } catch (e) {
+      console.warn('[tracker] no active session, skipping beacon', e);
+      return null;
+    }
+
+    this.buffer = this.buffer.filter((e) => this.inFlightSet.has(e));
     this.clearTimer();
-    return { session: this.session.getMetadata(), events };
+    this.failureMode = false;
+    this.retryDelay = INITIAL_RETRY_MS;
+    return { session, events };
   }
 }
 
@@ -132,8 +165,9 @@ export class Batcher {
  * Batcher — buffers rrweb events and ships them in groups.
  *
  * Buffer is the source of truth: events stay until the backend confirms
- * delivery. Flush peeks the first N events, sends them, and only removes
- * them on success — so failures or crashes mid-flight never lose data.
+ * delivery. Flush takes the first N events, sends them, and removes them
+ * by identity on success — so failures or crashes mid-flight never lose
+ * data, and a buffer wipe (overflow) mid-send can't delete the wrong events.
  *
  * On send failure we enter a failure mode and retry with exponential
  * backoff (capped). While in failure mode, new events keep accumulating
@@ -144,7 +178,7 @@ export class Batcher {
  * `onOverflow` — the host responds by requesting a new rrweb FullSnapshot
  * so replay continues from a fresh anchor instead of desyncing.
  *
- * `drainForBeacon()` is the unload path: returns the full buffer
- * synchronously so the host can ship leftovers via navigator.sendBeacon
- * before the page dies.
+ * `drainForBeacon()` is the unload path: synchronously returns the buffered
+ * events NOT already in flight, so the host can ship leftovers via
+ * navigator.sendBeacon before the page dies without double-shipping.
  */

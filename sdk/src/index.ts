@@ -14,7 +14,7 @@ class TrackerClass {
   private batcher: Batcher | null = null;
   private sender: HttpSender | null = null;
   private stopRecording: (() => void) | null = null;
-  private unloadHandler: (() => void) | null = null;
+  private removeLifecycleListeners: (() => void) | null = null;
 
   init(options: TrackerOptions): void {
     if (this.session) {
@@ -52,13 +52,16 @@ class TrackerClass {
         },
       }) ?? null;
 
-    this.unloadHandler = () => {
-      const payload = this.batcher?.drainForBeacon();
-      if (payload) {
-        this.sender?.sendBeacon(payload);
-      }
+    const onTeardown = (e: Event) => {
+      if (e.type === 'visibilitychange' && document.visibilityState !== 'hidden') return;
+      this.drainAndBeacon();
     };
-    window.addEventListener('beforeunload', this.unloadHandler);
+    document.addEventListener('visibilitychange', onTeardown);
+    window.addEventListener('pagehide', onTeardown);
+    this.removeLifecycleListeners = () => {
+      document.removeEventListener('visibilitychange', onTeardown);
+      window.removeEventListener('pagehide', onTeardown);
+    };
   }
 
   stop(): void {
@@ -70,21 +73,28 @@ class TrackerClass {
     this.stopRecording?.();
     this.stopRecording = null;
 
-    if (this.unloadHandler) {
-      window.removeEventListener('beforeunload', this.unloadHandler);
-      this.unloadHandler = null;
-    }
+    this.removeLifecycleListeners?.();
+    this.removeLifecycleListeners = null;
 
     // Best-effort final ship via beacon — synchronous, reliable on stop.
-    const payload = this.batcher?.drainForBeacon();
-    if (payload) {
-      this.sender?.sendBeacon(payload);
-    }
+    this.drainAndBeacon();
 
+    this.session.destroy();
     this.batcher = null;
     this.sender = null;
     this.session = null;
     console.log('[Tracker] stopped');
+  }
+
+  private drainAndBeacon(): void {
+    const payload = this.batcher?.drainForBeacon();
+    if (!payload) return;
+    const ok = this.sender?.sendBeacon(payload);
+    if (ok === false) {
+      console.warn(
+        `[tracker] sendBeacon refused ${payload.events.length} events (likely >64KB) — lost`,
+      );
+    }
   }
 }
 

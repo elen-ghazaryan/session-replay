@@ -1,14 +1,5 @@
+import { EventType } from 'rrweb';
 import type { TrackPayload } from '../core/Batcher';
-
-const RRWEB_EVENT_TYPE_NAMES: Record<number, string> = {
-  0: 'DomContentLoaded',
-  1: 'Load',
-  2: 'FullSnapshot',
-  3: 'IncrementalSnapshot',
-  4: 'Meta',
-  5: 'Custom',
-  6: 'Plugin',
-};
 
 export type CreateTrackRequest = {
   session: {
@@ -38,7 +29,7 @@ export function toCreateTrackRequest(payload: TrackPayload): CreateTrackRequest 
       timezone: payload.session.timezone,
     },
     events: payload.events.map(({ event, pageUrl }) => ({
-      eventType: RRWEB_EVENT_TYPE_NAMES[event.type] ?? 'Unknown',
+      eventType: EventType[event.type] ?? 'Unknown',
       timestamp: new Date(event.timestamp).toISOString(),
       data: event.data,
       pageUrl,

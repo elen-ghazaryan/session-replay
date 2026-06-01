@@ -20,11 +20,17 @@ export type SessionMetadata = {
 export class Session {
   private cached: StoredSession | null = null;
 
+  private readonly onStorage = (e: StorageEvent) => {
+    if (e.key !== STORAGE_KEY) return;
+    this.cached = null;
+  };
+
   constructor(private readonly appId: string) {
-    window.addEventListener('storage', (e) => {
-      if (e.key !== STORAGE_KEY) return;
-      this.cached = null;
-    });
+    window.addEventListener('storage', this.onStorage);
+  }
+
+  destroy(): void {
+    window.removeEventListener('storage', this.onStorage);
   }
 
   getOrCreate(): string {
