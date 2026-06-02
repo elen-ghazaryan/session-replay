@@ -18,5 +18,13 @@
       "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
       "@typescript-eslint/consistent-type-imports": "error",
       "no-console": "off"
-    }
+    },
+    "overrides": [
+      {
+        "files": ["**/__tests__/**", "**/*.test.ts"],
+        "rules": {
+          "@typescript-eslint/no-explicit-any": "off"
+        }
+      }
+    ]
 }
