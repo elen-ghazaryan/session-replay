@@ -41,7 +41,7 @@ describe('Tracker (integration)', () => {
 
   // Grab the emit callback Tracker handed to record(), so we can fire fake events.
   function emitEvent(e: unknown) {
-    const cfg = (record as any).mock.calls[0][0];
+    const cfg = (record as any).mock.calls.at(-1)[0];
     cfg.emit(e);
   }
 
