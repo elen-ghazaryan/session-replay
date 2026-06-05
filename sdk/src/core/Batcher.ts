@@ -1,6 +1,7 @@
 import { type eventWithTime } from 'rrweb';
 import type { Session, SessionMetadata } from './Session';
 import { isRetryable } from '../transport/HttpError';
+import { log } from '../logger';
 
 const BATCH_SIZE = 30;
 const FLUSH_INTERVAL_MS = 5000;
@@ -46,8 +47,8 @@ export class Batcher {
     this.buffer.push({ event, pageUrl: window.location.href });
 
     if (this.buffer.length > MAX_BUFFER_SIZE) {
-      console.warn(
-        `[tracker] buffer overflow: backend unreachable, dropped ${this.buffer.length} events. ` +
+      log.warn(
+        `buffer overflow: backend unreachable, dropped ${this.buffer.length} events. ` +
           `Taking new FullSnapshot for clean replay restart.`,
       );
       this.buffer = [];
@@ -77,7 +78,7 @@ export class Batcher {
     try {
       payload = { session: this.session.getMetadata(), events: inFlight };
     } catch (e) {
-      console.warn('[tracker] no active session, skipping flush', e);
+      log.warn('no active session, skipping flush', e);
       return;
     }
     // Track the exact events this send owns. Removal (and the beacon path)
@@ -94,11 +95,11 @@ export class Batcher {
     } catch (e) {
       this.inFlightSet = new Set();
       if (isRetryable(e)) {
-        console.warn('[tracker] send failed, will retry', e);
+        log.warn('send failed, will retry', e);
         this.onSendFailure();
       } else {
         // 4xx: the payload is bad, retrying can't fix it. Drop the batch.
-        console.error(`[tracker] backend rejected batch, dropped ${sent.size} events`, e);
+        log.error(`backend rejected batch, dropped ${sent.size} events`, e);
         this.buffer = this.buffer.filter((ev) => !sent.has(ev));
         this.onSendSuccess();
       }
@@ -149,7 +150,7 @@ export class Batcher {
     try {
       session = this.session.getMetadata();
     } catch (e) {
-      console.warn('[tracker] no active session, skipping beacon', e);
+      log.warn('no active session, skipping beacon', e);
       return null;
     }
 
