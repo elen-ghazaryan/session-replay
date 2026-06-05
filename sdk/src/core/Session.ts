@@ -1,3 +1,5 @@
+import { log } from '../logger';
+
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const STORAGE_KEY = 'tracker_session';
 
@@ -69,7 +71,7 @@ export class Session {
 
   touch(): void {
     if (!this.cached) {
-      console.warn('[tracker] touch() called with no active session — skipping');
+      log.warn('touch() called with no active session — skipping');
       return;
     }
     const updated: StoredSession = {
@@ -111,7 +113,7 @@ export class Session {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     } catch (e) {
-      console.warn('[tracker] localStorage unavailable — session will not persist', e);
+      log.warn('localStorage unavailable — session will not persist', e);
     }
 
     this.cached = session;

@@ -4,9 +4,11 @@ import { maskInput } from './core/privacy';
 import { Batcher } from './core/Batcher';
 import { HttpSender } from './transport/HttpSender';
 import { TRACKING_ENDPOINT } from './config';
+import { log, setLogLevel } from './logger';
 
 export type TrackerOptions = {
   appId: string;
+  debug?: boolean;
 };
 
 class TrackerClass {
@@ -18,18 +20,21 @@ class TrackerClass {
 
   init(options: TrackerOptions): void {
     if (this.session) {
-      console.warn('[Tracker] already initialized');
+      log.warn('already initialized');
       return;
     }
 
     const appId = options?.appId;
     if (typeof appId !== 'string' || appId.trim() === '') {
-      throw new Error('[Tracker] init() requires a non-empty appId');
+      throw new Error('[tracker] init() requires a non-empty appId');
     }
+
+    const { debug = false } = options;
+    setLogLevel(debug ? 'info' : 'warn');
 
     this.session = new Session(appId);
     const id = this.session.getOrCreate();
-    console.log('[Tracker] session started:', id);
+    log.info('session started:', id);
 
     this.sender = new HttpSender(TRACKING_ENDPOINT);
     this.batcher = new Batcher(this.session, this.sender.send, {
@@ -66,7 +71,7 @@ class TrackerClass {
 
   stop(): void {
     if (!this.session) {
-      console.warn('[Tracker] not running');
+      log.warn('not running');
       return;
     }
 
@@ -83,7 +88,7 @@ class TrackerClass {
     this.batcher = null;
     this.sender = null;
     this.session = null;
-    console.log('[Tracker] stopped');
+    log.info('stopped');
   }
 
   private drainAndBeacon(): void {
@@ -91,9 +96,7 @@ class TrackerClass {
     if (!payload) return;
     const ok = this.sender?.sendBeacon(payload);
     if (ok === false) {
-      console.warn(
-        `[tracker] sendBeacon refused ${payload.events.length} events (likely >64KB) — lost`,
-      );
+      log.warn(`sendBeacon refused ${payload.events.length} events (likely >64KB) — lost`);
     }
   }
 }
