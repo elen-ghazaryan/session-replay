@@ -93,12 +93,18 @@ class TrackingService(
         ipAddress = ipAddress,
       )
     }
-    session.eventCount += request.events.size
+
+    val incomingIds = request.events.map { it.clientEventId }
+    val existing = eventRepository.findExistingClientEventIds(incomingIds).toSet()
+    val newEvents = request.events.filter { it.clientEventId !in existing }
+
+    session.eventCount += newEvents.size
     sessionRepository.save(session)
 
-    val events = request.events.map {dto ->
+    val events = newEvents.map {dto ->
       Event(
         sessionId = session.id,
+        clientEventId = dto.clientEventId,
         eventType = dto.eventType,
         timestamp = dto.timestamp,
         data = objectMapper.writeValueAsString(dto.data),
@@ -106,6 +112,9 @@ class TrackingService(
       )
     }
     eventRepository.saveAll(events)
-    log.info("Tracked session={} totalEventCount={}", session.id, session.eventCount)
+    log.info(
+      "Tracked session={} new={} duplicatesSkipped={} totalEventCount={}",
+      session.id, newEvents.size, request.events.size - newEvents.size, session.eventCount,
+    )
   }
 }

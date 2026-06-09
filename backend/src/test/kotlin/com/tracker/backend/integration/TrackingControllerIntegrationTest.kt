@@ -47,6 +47,37 @@ class TrackingControllerIntegrationTest @Autowired constructor(
     }
 
     @Test
+    fun `POST track twice with same clientEventId persists the event only once`() {
+        val sessionId = UUID.randomUUID()
+        val eventId = UUID.randomUUID()
+        val payload = mapOf(
+            "session" to mapOf(
+                "id" to sessionId.toString(),
+                "appId" to "demo-app",
+                "startTime" to Instant.parse("2026-05-15T10:00:00Z").toString(),
+            ),
+            "events" to listOf(
+                mapOf(
+                    "clientEventId" to eventId.toString(),
+                    "eventType" to "click",
+                    "timestamp" to Instant.parse("2026-05-15T10:00:01Z").toString(),
+                    "data" to mapOf("tag" to "button"),
+                ),
+            ),
+        )
+
+        repeat(2) {
+            mockMvc.post("/api/track") {
+                contentType = MediaType.APPLICATION_JSON
+                content = objectMapper.writeValueAsString(payload)
+            }.andExpect { status { isAccepted() } }
+        }
+
+        assertEquals(1, eventRepository.findBySessionIdOrderByTimestampAsc(sessionId).size)
+        assertEquals(1, sessionRepository.findById(sessionId).orElseThrow().eventCount)
+    }
+
+    @Test
     fun `POST track with empty events list returns 400 VALIDATION_FAILED`() {
         val payload = trackPayload(UUID.randomUUID(), eventCount = 0)
 
@@ -120,6 +151,7 @@ class TrackingControllerIntegrationTest @Autowired constructor(
         ),
         "events" to (1..eventCount).map { i ->
             mapOf(
+                "clientEventId" to UUID.randomUUID().toString(),
                 "eventType" to "click",
                 "timestamp" to Instant.parse("2026-05-15T10:00:0${i}Z").toString(),
                 "pageUrl" to "https://example.com",
