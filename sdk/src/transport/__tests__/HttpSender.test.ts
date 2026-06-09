@@ -17,7 +17,9 @@ function payload(): TrackPayload {
       timezone: 'UTC',
       startedAt: 0,
     },
-    events: [{ event: { type: 2, data: {}, timestamp: 1000 } as any, pageUrl: 'http://x' }],
+    events: [
+      { id: 'e1', event: { type: 2, data: {}, timestamp: 1000 } as any, pageUrl: 'http://x' },
+    ],
   };
 }
 
