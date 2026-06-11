@@ -14,6 +14,9 @@ import java.util.UUID
 @Entity
 @Table(name = "events")
 class Event(
+    @Column(name = "client_event_id", nullable = false)
+    val clientEventId: UUID,
+
     @Column(name = "session_id", nullable = false)
     val sessionId: UUID,
 

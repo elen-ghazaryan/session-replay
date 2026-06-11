@@ -5,6 +5,7 @@ import { Batcher } from './core/Batcher';
 import { HttpSender } from './transport/HttpSender';
 import { TRACKING_ENDPOINT } from './config';
 import { log, setLogLevel } from './logger';
+import { EventStore } from './core/EventStore';
 
 export type TrackerOptions = {
   appId: string;
@@ -37,7 +38,7 @@ class TrackerClass {
     log.info('session started:', id);
 
     this.sender = new HttpSender(TRACKING_ENDPOINT);
-    this.batcher = new Batcher(this.session, this.sender.send, {
+    this.batcher = new Batcher(this.session, this.sender.send, new EventStore(), {
       onOverflow: () => record.takeFullSnapshot(),
     });
 

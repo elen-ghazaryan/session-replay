@@ -135,6 +135,7 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 2)
         every { sessionRepository.findById(request.session.id) } returns Optional.empty()
         every { sessionRepository.save(any()) } answers { firstArg() }
+        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -159,12 +160,34 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 3)
         every { sessionRepository.findById(request.session.id) } returns Optional.of(existing)
         every { sessionRepository.save(existing) } returns existing
+        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
 
         assertThat(existing.eventCount).isEqualTo(13)
         verify { sessionRepository.save(existing) }
+    }
+
+    @Test
+    fun `track skips events whose clientEventId already exists and counts only new`() {
+        val request = buildTrackRequest(eventsCount = 3)
+        val alreadyStored = request.events[0].clientEventId
+        every { sessionRepository.findById(request.session.id) } returns Optional.empty()
+        every { sessionRepository.save(any()) } answers { firstArg() }
+        every { eventRepository.findExistingClientEventIds(any()) } returns listOf(alreadyStored)
+        every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
+
+        service.track(request, ipAddress = "1.2.3.4")
+
+        val eventsSlot = slot<List<Event>>()
+        verify { eventRepository.saveAll(capture(eventsSlot)) }
+        assertThat(eventsSlot.captured).hasSize(2)
+        assertThat(eventsSlot.captured.map { it.clientEventId }).doesNotContain(alreadyStored)
+
+        val sessionSlot = slot<Session>()
+        verify { sessionRepository.save(capture(sessionSlot)) }
+        assertThat(sessionSlot.captured.eventCount).isEqualTo(2)
     }
 
     private fun buildSession(
@@ -181,9 +204,11 @@ class TrackingServiceTest {
 
     private fun buildEvent(
         sessionId: UUID = this.sessionId,
+        clientEventId: UUID = UUID.randomUUID(),
         eventType: String = "click",
     ): Event = Event(
         sessionId = sessionId,
+        clientEventId = clientEventId,
         eventType = eventType,
         timestamp = Instant.parse("2026-05-05T10:05:00Z"),
         data = """{"x":50}""",
@@ -222,6 +247,7 @@ class TrackingServiceTest {
         ),
         events = (1..eventsCount).map {
             EventDto(
+                clientEventId = UUID.randomUUID(),
                 eventType = "click",
                 timestamp = Instant.parse("2026-05-05T10:0$it:00Z"),
                 data = objectMapper.readTree("""{"i":$it}"""),

@@ -11,6 +11,7 @@ export type CreateTrackRequest = {
     timezone: string;
   };
   events: Array<{
+    clientEventId: string;
     eventType: string;
     timestamp: string;
     data: unknown;
@@ -28,7 +29,8 @@ export function toCreateTrackRequest(payload: TrackPayload): CreateTrackRequest 
       screenResolution: `${payload.session.screenWidth}x${payload.session.screenHeight}`,
       timezone: payload.session.timezone,
     },
-    events: payload.events.map(({ event, pageUrl }) => ({
+    events: payload.events.map(({ id, event, pageUrl }) => ({
+      clientEventId: id,
       eventType: EventType[event.type] ?? 'Unknown',
       timestamp: new Date(event.timestamp).toISOString(),
       data: event.data,

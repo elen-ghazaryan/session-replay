@@ -2,6 +2,8 @@ import { type eventWithTime } from 'rrweb';
 import type { Session, SessionMetadata } from './Session';
 import { isRetryable } from '../transport/HttpError';
 import { log } from '../logger';
+import { uuid } from '../uuid';
+import type { EventStore, StoredEvent } from './EventStore';
 
 const BATCH_SIZE = 30;
 const FLUSH_INTERVAL_MS = 5000;
@@ -9,14 +11,9 @@ const MAX_BUFFER_SIZE = 1000;
 const INITIAL_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 
-type BufferedEvent = {
-  event: eventWithTime;
-  pageUrl: string;
-};
-
 export type TrackPayload = {
   session: SessionMetadata;
-  events: BufferedEvent[];
+  events: StoredEvent[];
 };
 
 export type Sender = (payload: TrackPayload) => Promise<void>;
@@ -26,9 +23,9 @@ export type BatcherOptions = {
 };
 
 export class Batcher {
-  private buffer: BufferedEvent[] = [];
+  private buffer: StoredEvent[] = [];
   private timer: number | null = null;
-  private inFlightSet: Set<BufferedEvent> = new Set();
+  private inFlightSet: Set<string> = new Set();
   private failureMode: boolean = false;
   private retryDelay: number = INITIAL_RETRY_MS;
 
@@ -40,11 +37,30 @@ export class Batcher {
   constructor(
     private readonly session: Session,
     private readonly send: Sender,
+    private readonly persistentStore: EventStore,
     private readonly options: BatcherOptions = {},
-  ) {}
+  ) {
+    void this.recovery();
+  }
+
+  private async recovery(): Promise<void> {
+    const recovered = await this.persistentStore.load();
+    if (recovered.length === 0) return;
+
+    const bufferedIds = new Set(this.buffer.map((e) => e.id));
+    this.buffer = [...recovered.filter((e) => !bufferedIds.has(e.id)), ...this.buffer];
+
+    void this.flush();
+  }
 
   push(event: eventWithTime): void {
-    this.buffer.push({ event, pageUrl: window.location.href });
+    const data = {
+      event,
+      pageUrl: window.location.href,
+      id: uuid(),
+    };
+    this.buffer.push(data);
+    void this.persistentStore.add([data]);
 
     if (this.buffer.length > MAX_BUFFER_SIZE) {
       log.warn(
@@ -53,6 +69,7 @@ export class Batcher {
       );
       this.buffer = [];
       this.options.onOverflow?.();
+      void this.persistentStore.clear();
       return;
     }
 
@@ -81,15 +98,16 @@ export class Batcher {
       log.warn('no active session, skipping flush', e);
       return;
     }
-    // Track the exact events this send owns. Removal (and the beacon path)
-    // key off identity, not position — so if the buffer is wiped and refilled
+    // Track the exact events this send owns by id. Removal (and the beacon path)
+    // key off id, not position — so if the buffer is wiped and refilled
     // mid-send (overflow), we can't delete or double-ship the wrong events.
-    const sent = new Set(inFlight);
+    const sent = new Set(inFlight.map((e) => e.id));
     this.inFlightSet = sent;
 
     try {
       await this.send(payload);
-      this.buffer = this.buffer.filter((e) => !sent.has(e)); // remove on success
+      this.buffer = this.buffer.filter((e) => !sent.has(e.id)); // remove on success
+      void this.persistentStore.remove([...sent]);
       this.inFlightSet = new Set();
       this.onSendSuccess();
     } catch (e) {
@@ -100,7 +118,8 @@ export class Batcher {
       } else {
         // 4xx: the payload is bad, retrying can't fix it. Drop the batch.
         log.error(`backend rejected batch, dropped ${sent.size} events`, e);
-        this.buffer = this.buffer.filter((ev) => !sent.has(ev));
+        this.buffer = this.buffer.filter((e) => !sent.has(e.id));
+        void this.persistentStore.remove([...sent]);
         this.onSendSuccess();
       }
     }
@@ -143,7 +162,7 @@ export class Batcher {
     // Skip events the in-flight fetch already owns — keepalive will deliver
     // them, so beaconing them too would double-ship. Keep them in the buffer
     // so a cancelled unload can still resolve them normally.
-    const events = this.buffer.filter((e) => !this.inFlightSet.has(e));
+    const events = this.buffer.filter((e) => !this.inFlightSet.has(e.id));
     if (events.length === 0) return null;
 
     let session: SessionMetadata;
@@ -154,7 +173,7 @@ export class Batcher {
       return null;
     }
 
-    this.buffer = this.buffer.filter((e) => this.inFlightSet.has(e));
+    this.buffer = this.buffer.filter((e) => this.inFlightSet.has(e.id));
     this.clearTimer();
     this.failureMode = false;
     this.retryDelay = INITIAL_RETRY_MS;
@@ -167,7 +186,7 @@ export class Batcher {
  *
  * Buffer is the source of truth: events stay until the backend confirms
  * delivery. Flush takes the first N events, sends them, and removes them
- * by identity on success — so failures or crashes mid-flight never lose
+ * by id on success — so failures or crashes mid-flight never lose
  * data, and a buffer wipe (overflow) mid-send can't delete the wrong events.
  *
  * On send failure we enter a failure mode and retry with exponential

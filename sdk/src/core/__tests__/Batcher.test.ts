@@ -27,11 +27,21 @@ describe('Batcher', () => {
     }
   }
 
+  let store: { load: any; add: any; remove: any; clear: any };
+
   beforeEach(() => {
     vi.useFakeTimers();
     send = vi.fn().mockResolvedValue(undefined); // default: every send succeeds
     onOverflow = vi.fn();
-    batcher = new Batcher(session as any, send as any, { onOverflow: onOverflow as any });
+    store = {
+      load: vi.fn().mockResolvedValue([]), // recovery() calls this on construct
+      add: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
+    };
+    batcher = new Batcher(session as any, send as any, store as any, {
+      onOverflow: onOverflow as any,
+    });
   });
 
   afterEach(() => {
@@ -112,5 +122,20 @@ describe('Batcher', () => {
     pushN(5);
     expect(batcher.drainForBeacon()?.events).toHaveLength(5);
     expect(batcher.drainForBeacon()).toBeNull(); // already drained
+  });
+
+  it('recovers persisted events on startup and flushes them', async () => {
+    const persisted = [
+      { id: 'r1', event: { type: 3, data: {}, timestamp: 1 } as any, pageUrl: 'http://x' },
+      { id: 'r2', event: { type: 3, data: {}, timestamp: 2 } as any, pageUrl: 'http://x' },
+    ];
+    store.load.mockResolvedValueOnce(persisted);
+
+    // New batcher so recovery() runs against the loaded events.
+    new Batcher(session as any, send as any, store as any, { onOverflow: onOverflow as any });
+    await vi.advanceTimersByTimeAsync(0); // let recovery's load + flush settle
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].events.map((e: any) => e.id)).toEqual(['r1', 'r2']);
   });
 });

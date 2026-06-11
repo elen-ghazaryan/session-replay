@@ -114,12 +114,14 @@ class TrackerMapperTest {
     private fun buildEvent(
         id: Long? = 1L,
         sessionId: UUID = UUID.fromString("11111111-1111-1111-1111-111111111111"),
+        clientEventId: UUID = UUID.randomUUID(),
         eventType: String = "click",
         timestamp: Instant = Instant.parse("2026-05-05T10:05:00Z"),
         data: String = """{"x":50}""",
         pageUrl: String? = "https://example.com/home",
     ): Event = Event(
         sessionId = sessionId,
+        clientEventId = clientEventId,
         eventType = eventType,
         timestamp = timestamp,
         data = data,

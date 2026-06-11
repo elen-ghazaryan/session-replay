@@ -38,6 +38,9 @@ data class SessionDto(
 )
 
 data class EventDto(
+    @field:NotNull
+    val clientEventId: UUID,
+
     @field:NotBlank
     val eventType: String,
 
