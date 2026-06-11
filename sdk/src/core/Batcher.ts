@@ -2,6 +2,7 @@ import { type eventWithTime } from 'rrweb';
 import type { Session, SessionMetadata } from './Session';
 import { isRetryable } from '../transport/HttpError';
 import { log } from '../logger';
+import { uuid } from '../uuid';
 import type { EventStore, StoredEvent } from './EventStore';
 
 const BATCH_SIZE = 30;
@@ -56,7 +57,7 @@ export class Batcher {
     const data = {
       event,
       pageUrl: window.location.href,
-      id: crypto.randomUUID(),
+      id: uuid(),
     };
     this.buffer.push(data);
     void this.persistentStore.add([data]);

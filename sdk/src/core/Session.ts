@@ -1,4 +1,5 @@
 import { log } from '../logger';
+import { uuid } from '../uuid';
 
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const STORAGE_KEY = 'tracker_session';
@@ -44,7 +45,7 @@ export class Session {
 
     const now = Date.now();
     const fresh: StoredSession = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       startedAt: now,
       lastActivity: now,
     };

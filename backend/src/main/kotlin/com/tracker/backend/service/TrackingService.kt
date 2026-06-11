@@ -94,9 +94,10 @@ class TrackingService(
       )
     }
 
-    val incomingIds = request.events.map { it.clientEventId }
+    val uniqueIncomingEvents = request.events.distinctBy { it.clientEventId }
+    val incomingIds = uniqueIncomingEvents.map { it.clientEventId }
     val existing = eventRepository.findExistingClientEventIds(incomingIds).toSet()
-    val newEvents = request.events.filter { it.clientEventId !in existing }
+    val newEvents = uniqueIncomingEvents.filter { it.clientEventId !in existing }
 
     session.eventCount += newEvents.size
     sessionRepository.save(session)
