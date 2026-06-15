@@ -45,14 +45,22 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       setLoading(true)
+      setError(null)
       try {
         const res = await fetch(`/api/sessions/${id}`)
         const json: ApiResponse<SessionDetail> = await res.json()
+        if (!res.ok || !json.success) {
+          throw new Error(json.error?.message ?? `Request failed (${res.status})`)
+        }
         setDetail(json.data ?? null)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load session')
+        setDetail(null)
       } finally {
         setLoading(false)
       }
@@ -142,7 +150,11 @@ export default function SessionDetailPage() {
           </>
         )}
 
-        {!loading && !detail && (
+        {!loading && error && (
+          <p className="text-sm text-red-600">{error}</p>
+        )}
+
+        {!loading && !error && !detail && (
           <p className="text-sm text-slate-400">Session not found.</p>
         )}
       </div>

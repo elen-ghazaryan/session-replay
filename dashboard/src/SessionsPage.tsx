@@ -22,14 +22,23 @@ export default function SessionsPage() {
     const [total, setTotal] = useState(0)
     const [offset, setOffset] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await fetch(`/api/sessions?limit=${LIMIT}&offset=${offset}`)
             const json: ApiResponse<SessionList> = await res.json()
+            if (!res.ok || !json.success) {
+                throw new Error(json.error?.message ?? `Request failed (${res.status})`)
+            }
             setItems(json.data?.items ?? [])
             setTotal(json.data?.total ?? 0)
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to load sessions')
+            setItems([])
+            setTotal(0)
         } finally {
             setLoading(false);
         }
@@ -104,7 +113,16 @@ export default function SessionsPage() {
                                     <tr
                                         key={s.id}
                                         onClick={() => navigate(`/sessions/${s.id}`)}
-                                        className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                navigate(`/sessions/${s.id}`)
+                                            }
+                                        }}
+                                        role="button"
+                                        tabIndex={0}
+                                        aria-label={`Open session ${s.id}`}
+                                        className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50 focus:bg-slate-100 focus:outline-none"
                                     >
                                         <td className="whitespace-nowrap px-5 py-4 font-mono text-xs text-slate-600">
                                             {s.id}
@@ -147,7 +165,10 @@ export default function SessionsPage() {
                     {loading && (
                         <p className="px-5 py-6 text-center text-sm text-slate-400">Loading…</p>
                     )}
-                    {!loading && items.length === 0 && (
+                    {!loading && error && (
+                        <p className="px-5 py-10 text-center text-sm text-red-600">{error}</p>
+                    )}
+                    {!loading && !error && items.length === 0 && (
                         <p className="px-5 py-10 text-center text-sm text-slate-400">No sessions yet.</p>
                     )}
                 </div>
