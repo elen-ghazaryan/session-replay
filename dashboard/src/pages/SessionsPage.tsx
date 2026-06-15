@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { ApiResponse, SessionList, SessionSummary } from "./types";
-import { formatDate, formatTime } from './format'
+import type { SessionList, SessionSummary } from '../types'
+import { formatDate, formatTime } from '../lib/format'
+import { apiGet } from '../lib/api'
 
 const LIMIT = 20; // page size
 const ACTIVE_WINDOW_MS = 30 * 60 * 1000; // 30 min of inactivity → ended
@@ -23,30 +24,30 @@ export default function SessionsPage() {
     const [offset, setOffset] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`/api/sessions?limit=${LIMIT}&offset=${offset}`)
-            const json: ApiResponse<SessionList> = await res.json()
-            if (!res.ok || !json.success) {
-                throw new Error(json.error?.message ?? `Request failed (${res.status})`)
-            }
-            setItems(json.data?.items ?? [])
-            setTotal(json.data?.total ?? 0)
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Failed to load sessions')
-            setItems([])
-            setTotal(0)
-        } finally {
-            setLoading(false);
-        }
-    }, [offset]);
+    const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
+        async function load() {
+            setLoading(true);
+            setError(null);
+            try {
+                const data = await apiGet<SessionList>(`/api/sessions?limit=${LIMIT}&offset=${offset}`)
+                setItems(data?.items ?? [])
+                setTotal(data?.total ?? 0)
+            } catch (e) {
+                setError(e instanceof Error ? e.message : 'Failed to load sessions')
+                setItems([])
+                setTotal(0)
+            } finally {
+                setLoading(false);
+            }
+        }
         load()
-    }, [load]);
+    }, [offset, reloadKey]);
+
+    function refresh() {
+        setReloadKey((k) => k + 1)
+    }
 
     const page = Math.floor(offset / LIMIT) + 1
     const pageCount = Math.max(1, Math.ceil(total / LIMIT))
@@ -71,7 +72,7 @@ export default function SessionsPage() {
                         </p>
                     </div>
                     <button
-                        onClick={load}
+                        onClick={refresh}
                         disabled={loading}
                         title="Refresh"
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"

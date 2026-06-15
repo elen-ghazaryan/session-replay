@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import type { ApiResponse, EventDetail, SessionDetail } from './types'
-import { formatDateTime } from './format'
+import type { EventDetail, SessionDetail } from '../types'
+import { formatDateTime } from '../lib/format'
+import { apiGet } from '../lib/api'
 
-// rrweb IncrementalSource → friendly name (only IncrementalSnapshot carries source).
+// rrweb IncrementalSource → friendly name
 const INCREMENTAL_SOURCES: Record<number, string> = {
   0: 'Mutation',
   1: 'Mouse move',
@@ -52,12 +53,7 @@ export default function SessionDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/sessions/${id}`)
-        const json: ApiResponse<SessionDetail> = await res.json()
-        if (!res.ok || !json.success) {
-          throw new Error(json.error?.message ?? `Request failed (${res.status})`)
-        }
-        setDetail(json.data ?? null)
+        setDetail(await apiGet<SessionDetail>(`/api/sessions/${id}`))
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load session')
         setDetail(null)
