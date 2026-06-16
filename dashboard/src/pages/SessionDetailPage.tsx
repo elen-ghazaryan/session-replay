@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { EventDetail, SessionDetail } from '../types'
 import { formatDateTime } from '../lib/format'
 import { apiGet } from '../lib/api'
+import SessionReplay from '../components/SessionReplay'
 
 // rrweb IncrementalSource → friendly name
 const INCREMENTAL_SOURCES: Record<number, string> = {
@@ -102,6 +103,11 @@ export default function SessionDetailPage() {
                 <dd className="mt-1 text-sm">{detail.session.timezone ?? '—'}</dd>
               </div>
             </dl>
+
+            <h2 className="mb-3 text-lg font-semibold">Replay</h2>
+            <div className="mb-8">
+              <SessionReplay events={detail.events} />
+            </div>
 
             <h2 className="mb-3 text-lg font-semibold">Events ({detail.events.length})</h2>
             <div className="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-slate-200">
