@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
-import SessionsPage from './SessionsPage'
-import SessionDetailPage from './SessionDetailPage'
+import SessionsPage from './pages/SessionsPage'
+import SessionDetailPage from './pages/SessionDetailPage'
 
 function App() {
   return (
