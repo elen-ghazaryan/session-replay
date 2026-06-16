@@ -27,22 +27,28 @@ export default function SessionsPage() {
     const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
+        let cancelled = false; // ignore a superseded request's response
         async function load() {
             setLoading(true);
             setError(null);
             try {
                 const data = await apiGet<SessionList>(`/api/sessions?limit=${LIMIT}&offset=${offset}`)
+                if (cancelled) return
                 setItems(data?.items ?? [])
                 setTotal(data?.total ?? 0)
             } catch (e) {
+                if (cancelled) return
                 setError(e instanceof Error ? e.message : 'Failed to load sessions')
                 setItems([])
                 setTotal(0)
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         }
         load()
+        return () => {
+            cancelled = true
+        }
     }, [offset, reloadKey]);
 
     function refresh() {

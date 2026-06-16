@@ -50,19 +50,26 @@ export default function SessionDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false // ignore a superseded request's response
     async function load() {
       setLoading(true)
       setError(null)
       try {
-        setDetail(await apiGet<SessionDetail>(`/api/sessions/${id}`))
+        const data = await apiGet<SessionDetail>(`/api/sessions/${id}`)
+        if (cancelled) return
+        setDetail(data)
       } catch (e) {
+        if (cancelled) return
         setError(e instanceof Error ? e.message : 'Failed to load session')
         setDetail(null)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   return (

@@ -67,6 +67,7 @@ export default function SessionReplay({events}: {events: EventDetail[]}) {
             setReady(false);
             setPlaying(false);
             setCurrentTime(0);
+            setSpeed(1);
             root.replaceChildren();
             root.style.height = "";
         };
