@@ -30,6 +30,7 @@ dependencies {
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	implementation("com.bucket4j:bucket4j_jdk17-core:8.14.0")
 	implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+	implementation("me.paulschwarz:spring-dotenv:4.0.0")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")

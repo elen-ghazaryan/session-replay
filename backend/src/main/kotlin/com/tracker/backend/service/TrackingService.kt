@@ -99,6 +99,10 @@ class TrackingService(
     val existing = eventRepository.findExistingClientEventIds(incomingIds).toSet()
     val newEvents = uniqueIncomingEvents.filter { it.clientEventId !in existing }
 
+    val latest = newEvents.maxOfOrNull { it.timestamp }
+    if (latest != null && (session.endTime == null || latest.isAfter(session.endTime))) {
+      session.endTime = latest
+    }
     session.eventCount += newEvents.size
     sessionRepository.save(session)
 
