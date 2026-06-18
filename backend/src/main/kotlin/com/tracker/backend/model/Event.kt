@@ -16,26 +16,19 @@ import java.util.UUID
 class Event(
     @Column(name = "client_event_id", nullable = false)
     val clientEventId: UUID,
-
     @Column(name = "session_id", nullable = false)
     val sessionId: UUID,
-
     @Column(name = "event_type", nullable = false)
     val eventType: String,
-
     @Column(name = "timestamp", nullable = false)
     val timestamp: Instant,
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "data", nullable = false, columnDefinition = "jsonb")
     val data: String,
-
     @Column(name = "page_url")
     val pageUrl: String? = null,
-
     @Column(name = "received_at", nullable = false, updatable = false)
     val receivedAt: Instant = Instant.now(),
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
