@@ -135,7 +135,7 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 2)
         every { sessionRepository.findById(request.session.id) } returns Optional.empty()
         every { sessionRepository.save(any()) } answers { firstArg() }
-        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -160,7 +160,7 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 3)
         every { sessionRepository.findById(request.session.id) } returns Optional.of(existing)
         every { sessionRepository.save(existing) } returns existing
-        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -175,7 +175,7 @@ class TrackingServiceTest {
         val alreadyStored = request.events[0].clientEventId
         every { sessionRepository.findById(request.session.id) } returns Optional.empty()
         every { sessionRepository.save(any()) } answers { firstArg() }
-        every { eventRepository.findExistingClientEventIds(any()) } returns listOf(alreadyStored)
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns listOf(alreadyStored)
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")

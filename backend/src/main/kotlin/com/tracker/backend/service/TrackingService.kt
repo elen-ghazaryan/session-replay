@@ -32,7 +32,6 @@ class TrackingService(
     ): SessionListDto {
         val cappedLimit = limit.coerceIn(1, MAX_PAGE_SIZE)
         val cappedOffset = offset.coerceAtLeast(0)
-        log.info("Listing sessions limit={} offset={}", cappedLimit, cappedOffset)
         val items =
             sessionRepository
                 .findRecent(cappedLimit, cappedOffset)
@@ -49,7 +48,6 @@ class TrackingService(
 
     @Transactional(readOnly = true)
     fun getDetail(id: UUID): SessionDetailDto {
-        log.info("Fetching session detail for id={}", id)
         val session = sessionRepository.findById(id).orElseThrow { SessionNotFoundException(id) }
         val events =
             eventRepository.findBySessionIdOrderByTimestampAsc(id).map {
@@ -65,7 +63,6 @@ class TrackingService(
 
     @Transactional(readOnly = true)
     fun getReplay(id: UUID): ReplayDto {
-        log.info("Fetching replay for session id={}", id)
         if (!sessionRepository.existsById(id)) throw SessionNotFoundException(id)
         val events =
             eventRepository
@@ -87,12 +84,6 @@ class TrackingService(
         request: CreateTrackRequest,
         ipAddress: String?,
     ) {
-        log.info(
-            "Tracking session={} appId={} incomingEvents={}",
-            request.session.id,
-            request.session.appId,
-            request.events.size,
-        )
         val session =
             sessionRepository.findById(request.session.id).orElseGet {
                 Session(
@@ -109,8 +100,9 @@ class TrackingService(
 
         val uniqueIncomingEvents = request.events.distinctBy { it.clientEventId }
         val incomingIds = uniqueIncomingEvents.map { it.clientEventId }
-        val existing = eventRepository.findExistingClientEventIds(incomingIds).toSet()
+        val existing = eventRepository.findExistingClientEventIds(session.id, incomingIds).toSet()
         val newEvents = uniqueIncomingEvents.filter { it.clientEventId !in existing }
+        if (newEvents.isEmpty()) return
 
         val latest = newEvents.maxOfOrNull { it.timestamp }
         if (latest != null && (session.endTime == null || latest.isAfter(session.endTime))) {
