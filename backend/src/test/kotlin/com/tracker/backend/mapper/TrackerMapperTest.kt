@@ -11,15 +11,15 @@ import java.time.Instant
 import java.util.UUID
 
 class TrackerMapperTest {
-
     private val objectMapper: ObjectMapper = JsonMapper.builder().build()
     private val mapper = TrackerMapper(objectMapper)
 
     @Test
     fun `toSessionSummary copies all fields and parses deviceInfo JSON`() {
-        val session = buildSession(
-            deviceInfo = """{"os":"macOS","browser":"Chrome"}""",
-        )
+        val session =
+            buildSession(
+                deviceInfo = """{"os":"macOS","browser":"Chrome"}""",
+            )
 
         val result = mapper.toSessionSummary(session)
 
@@ -47,12 +47,13 @@ class TrackerMapperTest {
 
     @Test
     fun `toSessionSummary preserves null optional fields`() {
-        val session = buildSession(
-            endTime = null,
-            userAgent = null,
-            screenResolution = null,
-            timezone = null,
-        )
+        val session =
+            buildSession(
+                endTime = null,
+                userAgent = null,
+                screenResolution = null,
+                timezone = null,
+            )
 
         val result = mapper.toSessionSummary(session)
 
@@ -64,10 +65,11 @@ class TrackerMapperTest {
 
     @Test
     fun `toEventDetail copies all fields and parses data JSON`() {
-        val event = buildEvent(
-            id = 42L,
-            data = """{"x":100,"y":200}""",
-        )
+        val event =
+            buildEvent(
+                id = 42L,
+                data = """{"x":100,"y":200}""",
+            )
 
         val result = mapper.toEventDetail(event)
 
@@ -83,9 +85,10 @@ class TrackerMapperTest {
     fun `toEventDetail throws when id is null`() {
         val event = buildEvent(id = null)
 
-        val exception = assertThrows<IllegalStateException> {
-            mapper.toEventDetail(event)
-        }
+        val exception =
+            assertThrows<IllegalStateException> {
+                mapper.toEventDetail(event)
+            }
         assertThat(exception.message).contains("id is null")
     }
 
@@ -99,17 +102,18 @@ class TrackerMapperTest {
         deviceInfo: String? = """{"os":"macOS"}""",
         screenResolution: String? = "1920x1080",
         timezone: String? = "America/New_York",
-    ): Session = Session(
-        id = id,
-        appId = appId,
-        startTime = startTime,
-        endTime = endTime,
-        eventCount = eventCount,
-        userAgent = userAgent,
-        deviceInfo = deviceInfo,
-        screenResolution = screenResolution,
-        timezone = timezone,
-    )
+    ): Session =
+        Session(
+            id = id,
+            appId = appId,
+            startTime = startTime,
+            endTime = endTime,
+            eventCount = eventCount,
+            userAgent = userAgent,
+            deviceInfo = deviceInfo,
+            screenResolution = screenResolution,
+            timezone = timezone,
+        )
 
     private fun buildEvent(
         id: Long? = 1L,
@@ -119,13 +123,14 @@ class TrackerMapperTest {
         timestamp: Instant = Instant.parse("2026-05-05T10:05:00Z"),
         data: String = """{"x":50}""",
         pageUrl: String? = "https://example.com/home",
-    ): Event = Event(
-        sessionId = sessionId,
-        clientEventId = clientEventId,
-        eventType = eventType,
-        timestamp = timestamp,
-        data = data,
-        pageUrl = pageUrl,
-        id = id,
-    )
+    ): Event =
+        Event(
+            sessionId = sessionId,
+            clientEventId = clientEventId,
+            eventType = eventType,
+            timestamp = timestamp,
+            data = data,
+            pageUrl = pageUrl,
+            id = id,
+        )
 }

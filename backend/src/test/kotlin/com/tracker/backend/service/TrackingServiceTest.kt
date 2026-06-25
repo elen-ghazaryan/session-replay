@@ -24,8 +24,8 @@ import tools.jackson.databind.json.JsonMapper
 import java.time.Instant
 import java.util.Optional
 import java.util.UUID
-class TrackingServiceTest {
 
+class TrackingServiceTest {
     private lateinit var sessionRepository: SessionRepository
     private lateinit var eventRepository: EventRepository
     private lateinit var trackerMapper: TrackerMapper
@@ -135,7 +135,7 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 2)
         every { sessionRepository.findById(request.session.id) } returns Optional.empty()
         every { sessionRepository.save(any()) } answers { firstArg() }
-        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -160,7 +160,7 @@ class TrackingServiceTest {
         val request = buildTrackRequest(eventsCount = 3)
         every { sessionRepository.findById(request.session.id) } returns Optional.of(existing)
         every { sessionRepository.save(existing) } returns existing
-        every { eventRepository.findExistingClientEventIds(any()) } returns emptyList()
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns emptyList()
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -175,7 +175,7 @@ class TrackingServiceTest {
         val alreadyStored = request.events[0].clientEventId
         every { sessionRepository.findById(request.session.id) } returns Optional.empty()
         every { sessionRepository.save(any()) } answers { firstArg() }
-        every { eventRepository.findExistingClientEventIds(any()) } returns listOf(alreadyStored)
+        every { eventRepository.findExistingClientEventIds(any(), any()) } returns listOf(alreadyStored)
         every { eventRepository.saveAll(any<List<Event>>()) } answers { firstArg() }
 
         service.track(request, ipAddress = "1.2.3.4")
@@ -195,63 +195,70 @@ class TrackingServiceTest {
         appId: String = "demo-app",
         startTime: Instant = Instant.parse("2026-05-05T10:00:00Z"),
         eventCount: Int = 0,
-    ): Session = Session(
-        id = id,
-        appId = appId,
-        startTime = startTime,
-        eventCount = eventCount,
-    )
+    ): Session =
+        Session(
+            id = id,
+            appId = appId,
+            startTime = startTime,
+            eventCount = eventCount,
+        )
 
     private fun buildEvent(
         sessionId: UUID = this.sessionId,
         clientEventId: UUID = UUID.randomUUID(),
         eventType: String = "click",
-    ): Event = Event(
-        sessionId = sessionId,
-        clientEventId = clientEventId,
-        eventType = eventType,
-        timestamp = Instant.parse("2026-05-05T10:05:00Z"),
-        data = """{"x":50}""",
-        id = 1L,
-    )
+    ): Event =
+        Event(
+            sessionId = sessionId,
+            clientEventId = clientEventId,
+            eventType = eventType,
+            timestamp = Instant.parse("2026-05-05T10:05:00Z"),
+            data = """{"x":50}""",
+            id = 1L,
+        )
 
-    private fun buildSessionSummaryDto(id: UUID = sessionId): SessionSummaryDto = SessionSummaryDto(
-        id = id,
-        appId = "demo-app",
-        startTime = Instant.parse("2026-05-05T10:00:00Z"),
-        endTime = null,
-        eventCount = 0,
-        userAgent = null,
-        screenResolution = null,
-        timezone = null,
-        deviceInfo = null,
-    )
+    private fun buildSessionSummaryDto(id: UUID = sessionId): SessionSummaryDto =
+        SessionSummaryDto(
+            id = id,
+            appId = "demo-app",
+            startTime = Instant.parse("2026-05-05T10:00:00Z"),
+            endTime = null,
+            eventCount = 0,
+            userAgent = null,
+            screenResolution = null,
+            timezone = null,
+            deviceInfo = null,
+        )
 
-    private fun buildEventDetailDto(id: Long = 1L): EventDetailDto = EventDetailDto(
-        id = id,
-        eventType = "click",
-        timestamp = Instant.parse("2026-05-05T10:05:00Z"),
-        data = objectMapper.readTree("""{"x":50}"""),
-        pageUrl = null,
-    )
+    private fun buildEventDetailDto(id: Long = 1L): EventDetailDto =
+        EventDetailDto(
+            id = id,
+            eventType = "click",
+            timestamp = Instant.parse("2026-05-05T10:05:00Z"),
+            data = objectMapper.readTree("""{"x":50}"""),
+            pageUrl = null,
+        )
 
     private fun buildTrackRequest(
         sessionId: UUID = this.sessionId,
         eventsCount: Int = 2,
-    ): CreateTrackRequest = CreateTrackRequest(
-        session = SessionDto(
-            id = sessionId,
-            appId = "demo-app",
-            startTime = Instant.parse("2026-05-05T10:00:00Z"),
-            userAgent = "Mozilla/5.0",
-        ),
-        events = (1..eventsCount).map {
-            EventDto(
-                clientEventId = UUID.randomUUID(),
-                eventType = "click",
-                timestamp = Instant.parse("2026-05-05T10:0$it:00Z"),
-                data = objectMapper.readTree("""{"i":$it}"""),
-            )
-        },
-    )
+    ): CreateTrackRequest =
+        CreateTrackRequest(
+            session =
+                SessionDto(
+                    id = sessionId,
+                    appId = "demo-app",
+                    startTime = Instant.parse("2026-05-05T10:00:00Z"),
+                    userAgent = "Mozilla/5.0",
+                ),
+            events =
+                (1..eventsCount).map {
+                    EventDto(
+                        clientEventId = UUID.randomUUID(),
+                        eventType = "click",
+                        timestamp = Instant.parse("2026-05-05T10:0$it:00Z"),
+                        data = objectMapper.readTree("""{"i":$it}"""),
+                    )
+                },
+        )
 }
