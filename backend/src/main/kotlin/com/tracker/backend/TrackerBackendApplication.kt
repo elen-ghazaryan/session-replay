@@ -7,5 +7,5 @@ import org.springframework.boot.runApplication
 class TrackerBackendApplication
 
 fun main(args: Array<String>) {
-	runApplication<TrackerBackendApplication>(*args)
+    runApplication<TrackerBackendApplication>(*args)
 }

@@ -22,30 +22,30 @@ import java.util.UUID
 @RestController
 @RequestMapping("/api")
 class TrackingController(
-  private val trackingService: TrackingService,
+    private val trackingService: TrackingService,
 ) {
+    @PostMapping("/track")
+    fun track(
+        @Valid @RequestBody request: CreateTrackRequest,
+        httpRequest: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        trackingService.track(request, httpRequest.remoteAddr)
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok())
+    }
 
-  @PostMapping("/track")
-  fun track(
-    @Valid @RequestBody request: CreateTrackRequest,
-    httpRequest: HttpServletRequest,
-  ): ResponseEntity<ApiResponse<Unit>> {
-    trackingService.track(request, httpRequest.remoteAddr)
-    return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok())
-  }
+    @GetMapping("/sessions")
+    fun listSessions(
+        @RequestParam(defaultValue = "20") limit: Int,
+        @RequestParam(defaultValue = "0") offset: Int,
+    ): ApiResponse<SessionListDto> = ApiResponse.ok(trackingService.listSessions(limit, offset))
 
-  @GetMapping("/sessions")
-  fun listSessions(
-    @RequestParam(defaultValue = "20") limit: Int,
-    @RequestParam(defaultValue = "0") offset: Int,
-  ): ApiResponse<SessionListDto> =
-    ApiResponse.ok(trackingService.listSessions(limit, offset))
+    @GetMapping("/sessions/{id}")
+    fun getDetail(
+        @PathVariable id: UUID,
+    ): ApiResponse<SessionDetailDto> = ApiResponse.ok(trackingService.getDetail(id))
 
-  @GetMapping("/sessions/{id}")
-  fun getDetail(@PathVariable id: UUID): ApiResponse<SessionDetailDto> =
-    ApiResponse.ok(trackingService.getDetail(id))
-
-  @GetMapping("/sessions/{id}/replay")
-  fun getReplay(@PathVariable id: UUID): ApiResponse<ReplayDto> =
-    ApiResponse.ok(trackingService.getReplay(id))
+    @GetMapping("/sessions/{id}/replay")
+    fun getReplay(
+        @PathVariable id: UUID,
+    ): ApiResponse<ReplayDto> = ApiResponse.ok(trackingService.getReplay(id))
 }

@@ -10,27 +10,28 @@ import org.springframework.web.filter.CorsFilter
 
 @Configuration
 class WebConfig {
-
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val source = UrlBasedCorsConfigurationSource()
 
-        val trackConfig = CorsConfiguration().apply {
-            addAllowedOriginPattern("*")
-            allowedMethods = listOf("POST", "OPTIONS")
-            addAllowedHeader("*")
-            allowCredentials = false
-            maxAge = 3600
-        }
+        val trackConfig =
+            CorsConfiguration().apply {
+                addAllowedOriginPattern("*")
+                allowedMethods = listOf("POST", "OPTIONS")
+                addAllowedHeader("*")
+                allowCredentials = false
+                maxAge = 3600
+            }
         source.registerCorsConfiguration("/api/track", trackConfig)
 
-        val dashboardConfig = CorsConfiguration().apply {
-            addAllowedOrigin("http://localhost:5173")
-            allowedMethods = listOf("GET", "OPTIONS")
-            addAllowedHeader("*")
-            allowCredentials = false
-            maxAge = 3600
-        }
+        val dashboardConfig =
+            CorsConfiguration().apply {
+                addAllowedOrigin("http://localhost:5173")
+                allowedMethods = listOf("GET", "OPTIONS")
+                addAllowedHeader("*")
+                allowCredentials = false
+                maxAge = 3600
+            }
         source.registerCorsConfiguration("/api/sessions/**", dashboardConfig)
 
         return source
@@ -38,6 +39,6 @@ class WebConfig {
 
     @Bean
     fun corsFilter(
-        @Qualifier("corsConfigurationSource") source: CorsConfigurationSource
+        @Qualifier("corsConfigurationSource") source: CorsConfigurationSource,
     ): CorsFilter = CorsFilter(source)
 }
