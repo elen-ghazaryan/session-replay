@@ -128,7 +128,7 @@ export function Home() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link to="/playground">
-              <Button size="lg" variant="secondary" className="!text-indigo-600">
+              <Button size="lg" variant="secondary" className="text-indigo-600!">
                 Open the playground
               </Button>
             </Link>

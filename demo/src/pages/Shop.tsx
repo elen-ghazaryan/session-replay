@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge, Button, Card, Hint, SectionTitle } from '../components/ui';
 import { Reveal } from '../components/Reveal';
 import { notify } from '../components/toast';
@@ -18,6 +18,18 @@ export function Shop() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [drawer, setDrawer] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Close whichever overlay is open on Escape.
+  useEffect(() => {
+    if (!drawer && !done) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setDrawer(false);
+      setDone(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawer, done]);
 
   const count = Object.values(cart).reduce((a, b) => a + b, 0);
   const total = Object.entries(cart).reduce(
@@ -74,10 +86,15 @@ export function Shop() {
       {/* Cart drawer */}
       {drawer && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm">
-          <div className="flex h-full w-full max-w-md animate-[fadeUp_0.3s] flex-col bg-white shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-title"
+            className="flex h-full w-full max-w-md animate-[fadeUp_0.3s] flex-col bg-white shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
-              <h3 className="text-lg font-bold text-slate-900">Your cart</h3>
-              <button onClick={() => setDrawer(false)} className="text-slate-400 hover:text-slate-600">
+              <h3 id="cart-title" className="text-lg font-bold text-slate-900">Your cart</h3>
+              <button aria-label="Close cart" onClick={() => setDrawer(false)} className="text-slate-400 hover:text-slate-600">
                 ✕
               </button>
             </div>
@@ -97,6 +114,7 @@ export function Shop() {
                           <p className="text-xs text-slate-400">${p.price} × {qty}</p>
                         </div>
                         <button
+                          aria-label={`Remove ${p.name}`}
                           onClick={() => {
                             setCart((c) => {
                               const next = { ...c };
@@ -140,11 +158,16 @@ export function Shop() {
       {/* Success */}
       {done && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm animate-pop rounded-2xl bg-white p-8 text-center shadow-2xl">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-title"
+            className="w-full max-w-sm animate-pop rounded-2xl bg-white p-8 text-center shadow-2xl"
+          >
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl">
               ✓
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Order confirmed!</h3>
+            <h3 id="order-title" className="text-xl font-bold text-slate-900">Order confirmed!</h3>
             <p className="mt-2 text-sm text-slate-500">
               Now open the dashboard and replay this whole shopping journey from the first click.
             </p>

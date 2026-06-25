@@ -36,5 +36,6 @@ button in the on-screen recorder (bottom-left) to jump to your session in the da
 small store so React can show recording state and the live session id. Recording
 starts automatically on load; the recorder panel can stop/restart it.
 
-The toasts ("Recorded by SDK") are illustrative teaching aids — they describe the
-kind of event rrweb just captured; they don't read SDK internals.
+Toasts are reserved for real app feedback — a "Done" confirmation on checkout and
+form submit, and a "Not recorded" notice when you interact with a `data-private`
+region. They're illustrative UI, not reads of SDK internals.

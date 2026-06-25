@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Badge, Button, Card, Hint, SectionTitle } from '../components/ui';
 import { Reveal } from '../components/Reveal';
 import { blocked, notify } from '../components/toast';
@@ -103,10 +103,12 @@ function Field({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={onChange}

@@ -61,6 +61,7 @@ function TodoList() {
           >
             {it}
             <button
+              aria-label={`Remove item: ${it}`}
               onClick={() => setItems((x) => x.filter((_, j) => j !== i))}
               className="text-slate-300 transition-colors hover:text-rose-500"
             >
