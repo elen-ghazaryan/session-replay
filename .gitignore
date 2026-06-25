@@ -28,6 +28,7 @@ hs_err_pid*
 # ---------- Node / JavaScript (sdk, dashboard, demo) ----------
 node_modules/
 dist/
+.vite/
 .next/
 .nuxt/
 .cache/
